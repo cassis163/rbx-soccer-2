@@ -4,7 +4,7 @@ import DestructableEntity from "shared/destructableEntity";
 
 export const DIAMETER = 3;
 
-const STUDS_PER_METER = Workspace.Gravity / 9.8;
+const STUDS_PER_METER = 35 / 9.8;
 
 const AIR_DENSITY = 1.225;
 const SURFACE_AREA = math.pi * (DIAMETER / 2) ** 2;
@@ -12,7 +12,8 @@ const TEMPERATURE_IN_KELVIN = 294;
 
 const VISCOSITY = 1.458e-6 * (TEMPERATURE_IN_KELVIN ** 1.5 / (TEMPERATURE_IN_KELVIN + 110.4));
 
-print(VISCOSITY);
+const DRAG_MULTIPLIER = 1;
+const MAGNUS_MULTIPLIER = DRAG_MULTIPLIER;
 
 const createBall = (): BasePart => {
     return ServerStorage.WaitForChild("Ball").Clone() as BasePart;
@@ -50,9 +51,11 @@ class Ball implements DestructableEntity {
         attachment.Parent = this.part;
 
         this.dragForce.Force = Vector3.zero;
+        this.dragForce.RelativeTo = Enum.ActuatorRelativeTo.World;
         this.dragForce.Attachment0 = attachment;
         this.dragForce.Parent = this.part;
         this.magnusForce.Force = Vector3.zero;
+        this.magnusForce.RelativeTo = Enum.ActuatorRelativeTo.World;
         this.magnusForce.Attachment0 = attachment;
         this.magnusForce.Parent = this.part;
 
@@ -68,11 +71,16 @@ class Ball implements DestructableEntity {
         const velocity = this.part.AssemblyLinearVelocity.Magnitude;
         const magnusCoefficient = this.getMagnusCoefficient();
         const magnitude = 0.5 * magnusCoefficient * AIR_DENSITY * velocity ** 2 * SURFACE_AREA;
-        const direction = this.part.AssemblyAngularVelocity.Cross(this.part.AssemblyLinearVelocity);
+
+        const linearVelocity = this.part.AssemblyLinearVelocity;
+        const angularVelocity = this.part.AssemblyAngularVelocity;
+        if (linearVelocity.Magnitude === 0 || angularVelocity.Magnitude === 0) return Vector3.zero;
+
+        const direction = angularVelocity.Cross(linearVelocity);
 
         if (direction.Magnitude === 0) return Vector3.zero;
 
-        return direction.Unit.mul(magnitude);
+        return direction.Unit.mul(magnitude * MAGNUS_MULTIPLIER);
     }
 
     private getMagnusCoefficient() {
@@ -95,7 +103,7 @@ class Ball implements DestructableEntity {
 
         if (negativeVelocity.Magnitude === 0) return Vector3.zero;
 
-        return negativeVelocity.Unit.mul(magnitude);
+        return negativeVelocity.Unit.mul(magnitude * DRAG_MULTIPLIER);
     }
 
     private getDragCoefficient(reynoldsNumber: number) {
