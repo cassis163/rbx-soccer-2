@@ -1,13 +1,12 @@
-import { Janitor } from "@rbxts/janitor";
+import { BaseComponent, Component } from "@flamework/components";
 import { RunService } from "@rbxts/services";
 
-class Timer {
+@Component()
+export default class Timer extends BaseComponent {
     private startTime;
     private time;
     private onTimeUp: () => void;
     private onChange: (time: number) => void;
-
-    private janitor = new Janitor();
 
     constructor(
         startTime: number,
@@ -16,6 +15,8 @@ class Timer {
             return;
         },
     ) {
+        super();
+
         this.startTime = startTime;
         this.time = startTime;
         this.onTimeUp = onTimeUp;
@@ -23,7 +24,7 @@ class Timer {
     }
 
     public start() {
-        this.janitor.Add(
+        this.maid.GiveTask(
             RunService.Stepped.Connect((_, deltaTime) => {
                 this.subtractTime(deltaTime);
             }),
@@ -31,7 +32,7 @@ class Timer {
     }
 
     public stop() {
-        this.janitor.Cleanup();
+        this.maid.DoCleaning();
     }
 
     public reset() {
@@ -48,5 +49,3 @@ class Timer {
         this.onChange(this.time);
     }
 }
-
-export default Timer;
