@@ -1,6 +1,5 @@
-import { Janitor } from "@rbxts/janitor";
-import { RunService, ServerStorage, Workspace } from "@rbxts/services";
-import DestructableEntity from "shared/destructableEntity";
+import { BaseComponent, Component } from "@flamework/components";
+import { OnInit, OnPhysics } from "@flamework/core";
 
 export const DIAMETER = 3;
 
@@ -12,84 +11,70 @@ const TEMPERATURE_IN_KELVIN = 294;
 
 const VISCOSITY = 1.458e-6 * (TEMPERATURE_IN_KELVIN ** 1.5 / (TEMPERATURE_IN_KELVIN + 110.4));
 
-const DRAG_MULTIPLIER = 1;
-const MAGNUS_MULTIPLIER = DRAG_MULTIPLIER;
-
-const createBall = (): BasePart => {
-    return ServerStorage.WaitForChild("Ball").Clone() as BasePart;
+type BallAttributes = {
+    dragMultiplier: number;
+    magnusMultiplier: number;
 };
 
-class Ball implements DestructableEntity {
-    private janitor = new Janitor();
-
-    private part: BasePart = this.janitor.Add(createBall());
+@Component({
+    tag: "Ball",
+})
+export default class Ball extends BaseComponent<BallAttributes, BasePart> implements OnInit, OnPhysics {
     private dragForce = new Instance("VectorForce");
     private magnusForce = new Instance("VectorForce");
 
-    constructor(cframe: CFrame) {
-        this.setCFrame(cframe);
-        this.part.Parent = Workspace;
-        this.initializePhysics();
-    }
-
     public setCFrame(cframe: CFrame) {
-        this.part.CFrame = cframe;
-        this.part.AssemblyLinearVelocity = Vector3.zero;
-        this.part.AssemblyAngularVelocity = Vector3.zero;
+        this.instance.CFrame = cframe;
+        this.instance.AssemblyLinearVelocity = Vector3.zero;
+        this.instance.AssemblyAngularVelocity = Vector3.zero;
     }
 
-    public getPart(): BasePart {
-        return this.part;
+    public setParent(instance: Instance) {
+        this.instance.Parent = instance;
     }
 
-    public destroy() {
-        this.janitor.Destroy();
-    }
-
-    private initializePhysics() {
+    onInit() {
         const attachment = new Instance("Attachment");
-        attachment.Parent = this.part;
+        attachment.Parent = this.instance;
 
         this.dragForce.Force = Vector3.zero;
         this.dragForce.RelativeTo = Enum.ActuatorRelativeTo.World;
         this.dragForce.Attachment0 = attachment;
-        this.dragForce.Parent = this.part;
+        this.dragForce.Parent = this.instance;
         this.magnusForce.Force = Vector3.zero;
         this.magnusForce.RelativeTo = Enum.ActuatorRelativeTo.World;
         this.magnusForce.Attachment0 = attachment;
-        this.magnusForce.Parent = this.part;
-
-        this.janitor.Add(RunService.PreSimulation.Connect(() => this.updatePhysics()));
+        this.magnusForce.Parent = this.instance;
     }
 
-    private updatePhysics() {
+    onPhysics() {
         this.dragForce.Force = this.getDragForce();
         this.magnusForce.Force = this.getMagnusForce();
     }
 
     private getMagnusForce() {
-        const velocity = this.part.AssemblyLinearVelocity.Magnitude;
+        const velocity = this.instance.AssemblyLinearVelocity.Magnitude;
         const magnusCoefficient = this.getMagnusCoefficient();
         const magnitude = 0.5 * magnusCoefficient * AIR_DENSITY * velocity ** 2 * SURFACE_AREA;
 
-        const linearVelocity = this.part.AssemblyLinearVelocity;
-        const angularVelocity = this.part.AssemblyAngularVelocity;
+        const linearVelocity = this.instance.AssemblyLinearVelocity;
+        const angularVelocity = this.instance.AssemblyAngularVelocity;
         if (linearVelocity.Magnitude === 0 || angularVelocity.Magnitude === 0) return Vector3.zero;
 
         const direction = angularVelocity.Cross(linearVelocity);
 
         if (direction.Magnitude === 0) return Vector3.zero;
 
-        return direction.Unit.mul(magnitude * MAGNUS_MULTIPLIER);
+        return direction.Unit.mul(magnitude * this.attributes.dragMultiplier);
     }
 
     private getMagnusCoefficient() {
         // Coefficient is based on metric system, so convert from studs to meters
 
-        const velocity = this.part.AssemblyLinearVelocity.Magnitude / STUDS_PER_METER;
+        const velocity = this.instance.AssemblyLinearVelocity.Magnitude / STUDS_PER_METER;
         if (velocity === 0) return 0;
 
-        const angularVelocity = this.part.AssemblyAngularVelocity.Magnitude / STUDS_PER_METER;
+        const angularVelocity = this.instance.AssemblyAngularVelocity.Magnitude / STUDS_PER_METER;
 
         return 0.385 * (((DIAMETER / 2 / STUDS_PER_METER) * angularVelocity) / velocity) ** 0.25;
     }
@@ -97,13 +82,13 @@ class Ball implements DestructableEntity {
     private getDragForce() {
         const reynoldsNumber = this.getReynoldsNumber();
         const dragCoefficient = this.getDragCoefficient(reynoldsNumber);
-        const velocity = this.part.AssemblyLinearVelocity.Magnitude;
+        const velocity = this.instance.AssemblyLinearVelocity.Magnitude;
         const magnitude = 0.5 * AIR_DENSITY * velocity ** 2 * SURFACE_AREA * dragCoefficient;
-        const negativeVelocity = this.part.AssemblyLinearVelocity.mul(-1);
+        const negativeVelocity = this.instance.AssemblyLinearVelocity.mul(-1);
 
         if (negativeVelocity.Magnitude === 0) return Vector3.zero;
 
-        return negativeVelocity.Unit.mul(magnitude * DRAG_MULTIPLIER);
+        return negativeVelocity.Unit.mul(magnitude * this.attributes.magnusMultiplier);
     }
 
     private getDragCoefficient(reynoldsNumber: number) {
@@ -120,10 +105,8 @@ class Ball implements DestructableEntity {
         // Coefficient is based on metric system, so convert from studs to meters
 
         const characteristicLength = DIAMETER / STUDS_PER_METER;
-        const velocity = this.part.AssemblyLinearVelocity.Magnitude / STUDS_PER_METER;
+        const velocity = this.instance.AssemblyLinearVelocity.Magnitude / STUDS_PER_METER;
 
         return ((AIR_DENSITY / STUDS_PER_METER ** 3) * velocity * characteristicLength) / VISCOSITY / STUDS_PER_METER;
     }
 }
-
-export default Ball;
