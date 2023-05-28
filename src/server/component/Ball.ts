@@ -1,12 +1,9 @@
 import { BaseComponent, Component } from "@flamework/components";
 import { OnInit, OnPhysics } from "@flamework/core";
 
-export const DIAMETER = 3;
-
 const STUDS_PER_METER = 35 / 9.8;
 
 const AIR_DENSITY = 1.225;
-const SURFACE_AREA = math.pi * (DIAMETER / 2) ** 2;
 const TEMPERATURE_IN_KELVIN = 294;
 
 const VISCOSITY = 1.458e-6 * (TEMPERATURE_IN_KELVIN ** 1.5 / (TEMPERATURE_IN_KELVIN + 110.4));
@@ -24,8 +21,8 @@ type BallAttributes = {
     },
 })
 export default class Ball extends BaseComponent<BallAttributes, BasePart> implements OnInit, OnPhysics {
-    private dragForce = new Instance("VectorForce");
-    private magnusForce = new Instance("VectorForce");
+    private readonly dragForce = new Instance("VectorForce");
+    private readonly magnusForce = new Instance("VectorForce");
 
     public setCFrame(cframe: CFrame) {
         this.instance.CFrame = cframe;
@@ -59,7 +56,8 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
     private getMagnusForce() {
         const velocity = this.instance.AssemblyLinearVelocity.Magnitude;
         const magnusCoefficient = this.getMagnusCoefficient();
-        const magnitude = 0.5 * magnusCoefficient * AIR_DENSITY * velocity ** 2 * SURFACE_AREA;
+        const surfaceArea = this.getSurfaceArea();
+        const magnitude = 0.5 * magnusCoefficient * AIR_DENSITY * velocity ** 2 * surfaceArea;
 
         const linearVelocity = this.instance.AssemblyLinearVelocity;
         const angularVelocity = this.instance.AssemblyAngularVelocity;
@@ -79,15 +77,17 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
         if (velocity === 0) return 0;
 
         const angularVelocity = this.instance.AssemblyAngularVelocity.Magnitude / STUDS_PER_METER;
+        const ballRadius = this.getBallDiameter() / 2 / STUDS_PER_METER;
 
-        return 0.385 * (((DIAMETER / 2 / STUDS_PER_METER) * angularVelocity) / velocity) ** 0.25;
+        return 0.385 * ((ballRadius * angularVelocity) / velocity) ** 0.25;
     }
 
     private getDragForce() {
         const reynoldsNumber = this.getReynoldsNumber();
         const dragCoefficient = this.getDragCoefficient(reynoldsNumber);
+        const surfaceArea = this.getSurfaceArea();
         const velocity = this.instance.AssemblyLinearVelocity.Magnitude;
-        const magnitude = 0.5 * AIR_DENSITY * velocity ** 2 * SURFACE_AREA * dragCoefficient;
+        const magnitude = 0.5 * AIR_DENSITY * velocity ** 2 * surfaceArea * dragCoefficient;
         const negativeVelocity = this.instance.AssemblyLinearVelocity.mul(-1);
 
         if (negativeVelocity.Magnitude === 0) return Vector3.zero;
@@ -108,9 +108,18 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
     private getReynoldsNumber() {
         // Coefficient is based on metric system, so convert from studs to meters
 
-        const characteristicLength = DIAMETER / STUDS_PER_METER;
+        const characteristicLength = this.getBallDiameter() / STUDS_PER_METER;
         const velocity = this.instance.AssemblyLinearVelocity.Magnitude / STUDS_PER_METER;
 
         return ((AIR_DENSITY / STUDS_PER_METER ** 3) * velocity * characteristicLength) / VISCOSITY / STUDS_PER_METER;
+    }
+
+    private getSurfaceArea() {
+        return math.pi * (this.getBallDiameter() / 2) ** 2;
+    }
+
+    private getBallDiameter() {
+        // Given that the size is the same along all axes, we can just use the X axis
+        return this.instance.Size.X;
     }
 }

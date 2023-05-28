@@ -1,26 +1,19 @@
-import { BaseComponent, Component } from "@flamework/components";
+import Maid from "@rbxts/maid";
 import { RunService } from "@rbxts/services";
+import Signal from "@rbxts/signal";
 
-@Component()
-export default class Timer extends BaseComponent {
-    private startTime;
+export default class Timer {
+    public readonly onTimeUp = new Signal();
+    public readonly onChange = new Signal<(time: number) => void>();
+
+    private readonly maid = new Maid();
+
+    private readonly startTime;
     private time;
-    private onTimeUp: () => void;
-    private onChange: (time: number) => void;
 
-    constructor(
-        startTime: number,
-        onTimeUp: () => void,
-        onChange = () => {
-            return;
-        },
-    ) {
-        super();
-
+    constructor(startTime: number) {
         this.startTime = startTime;
         this.time = startTime;
-        this.onTimeUp = onTimeUp;
-        this.onChange = onChange;
     }
 
     public start() {
@@ -43,9 +36,9 @@ export default class Timer extends BaseComponent {
         this.time = math.max(0, this.time - deltaTime);
         if (this.time === 0) {
             this.stop();
-            this.onTimeUp();
+            this.onTimeUp.Fire();
         }
 
-        this.onChange(this.time);
+        this.onChange.Fire(this.time);
     }
 }

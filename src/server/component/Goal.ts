@@ -1,8 +1,8 @@
 import { Workspace } from "@rbxts/services";
 import { BaseComponent, Component, Components } from "@flamework/components";
-import { Dependency, OnInit } from "@flamework/core";
+import { Dependency } from "@flamework/core";
 import Signal from "@rbxts/signal";
-import Ball, { DIAMETER } from "./ball";
+import Ball from "./Ball";
 
 const components = Dependency<Components>();
 
@@ -15,12 +15,14 @@ type GoalAttributes = {
 @Component({
     tag: "Goal",
 })
-export default class Goal extends BaseComponent<GoalAttributes, Model> implements OnInit {
+export default class Goal extends BaseComponent<GoalAttributes, Model> {
     public readonly onGoalScored = new Signal<OnGoalScoredCallback>();
 
-    onInit() {
-        const collisionPart = this.createCollisionPart();
-        collisionPart.Touched.Connect((part) => this.onTouch(part));
+    public initialize(ballDiameter: number) {
+        this.maid.DoCleaning();
+        const collisionPart = this.createCollisionPart(ballDiameter);
+        this.maid.GiveTask(collisionPart);
+        this.maid.GiveTask(collisionPart.Touched.Connect((part) => this.onTouch(part)));
         (this.instance.WaitForChild("Frame") as BasePart).BrickColor = this.attributes.team.TeamColor;
     }
 
@@ -41,9 +43,9 @@ export default class Goal extends BaseComponent<GoalAttributes, Model> implement
         this.onGoalScored.Fire(ballComponent);
     }
 
-    private createCollisionPart(): Part {
+    private createCollisionPart(ballDiameter: number): Part {
         const boundingBox = this.instance.GetBoundingBox();
-        const offset = boundingBox[0].RightVector.mul(DIAMETER);
+        const offset = boundingBox[0].RightVector.mul(ballDiameter);
         const part = new Instance("Part");
         part.Size = boundingBox[1];
         part.CanCollide = false;
