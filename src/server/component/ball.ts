@@ -18,6 +18,10 @@ type BallAttributes = {
 
 @Component({
     tag: "Ball",
+    defaults: {
+        dragMultiplier: 1,
+        magnusMultiplier: 1,
+    },
 })
 export default class Ball extends BaseComponent<BallAttributes, BasePart> implements OnInit, OnPhysics {
     private dragForce = new Instance("VectorForce");
