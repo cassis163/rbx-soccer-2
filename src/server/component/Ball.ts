@@ -24,16 +24,6 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
     private readonly dragForce = new Instance("VectorForce");
     private readonly magnusForce = new Instance("VectorForce");
 
-    public setCFrame(cframe: CFrame) {
-        this.instance.CFrame = cframe;
-        this.instance.AssemblyLinearVelocity = Vector3.zero;
-        this.instance.AssemblyAngularVelocity = Vector3.zero;
-    }
-
-    public setParent(instance: Instance) {
-        this.instance.Parent = instance;
-    }
-
     onInit() {
         const attachment = new Instance("Attachment");
         attachment.Parent = this.instance;

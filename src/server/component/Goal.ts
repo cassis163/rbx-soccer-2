@@ -1,38 +1,27 @@
-import { Workspace } from "@rbxts/services";
 import { BaseComponent, Component, Components } from "@flamework/components";
 import Signal from "@rbxts/signal";
 import Ball from "./Ball";
 
-export type OnGoalScoredCallback = (ball: Ball) => void;
-
-type GoalAttributes = {
-    team: Team;
-};
-
 @Component({
     tag: "Goal",
 })
-export default class Goal extends BaseComponent<GoalAttributes, Model> {
-    public readonly onGoalScored = new Signal<OnGoalScoredCallback>();
+export default class Goal extends BaseComponent<{}, Model> {
+    public readonly onGoalScored = new Signal<(ballPart: BasePart) => void>();
 
     constructor(private readonly components: Components) {
         super();
     }
 
-    public initialize(ballDiameter: number) {
+    public initialize(ballDiameter: number, team: Team) {
         this.maid.DoCleaning();
         const collisionPart = this.createCollisionPart(ballDiameter);
         this.maid.GiveTask(collisionPart);
         this.maid.GiveTask(collisionPart.Touched.Connect((part) => this.onTouch(part)));
-        (this.instance.WaitForChild("Frame") as BasePart).BrickColor = this.attributes.team.TeamColor;
+        (this.instance.WaitForChild("Frame") as BasePart).BrickColor = team.TeamColor;
     }
 
     public getPosition(): Vector3 {
         return this.instance.GetBoundingBox()[0].Position;
-    }
-
-    public getTeam(): Team {
-        return this.attributes.team;
     }
 
     private onTouch(part: BasePart) {
@@ -41,7 +30,7 @@ export default class Goal extends BaseComponent<GoalAttributes, Model> {
             return;
         }
 
-        this.onGoalScored.Fire(ballComponent);
+        this.onGoalScored.Fire(part);
     }
 
     private createCollisionPart(ballDiameter: number): Part {
@@ -54,7 +43,7 @@ export default class Goal extends BaseComponent<GoalAttributes, Model> {
         part.Anchored = true;
         part.Locked = true;
         part.CFrame = boundingBox[0].add(offset);
-        part.Parent = Workspace;
+        part.Parent = this.instance;
 
         return part;
     }
