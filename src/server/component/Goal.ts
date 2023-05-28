@@ -1,10 +1,7 @@
 import { Workspace } from "@rbxts/services";
 import { BaseComponent, Component, Components } from "@flamework/components";
-import { Dependency } from "@flamework/core";
 import Signal from "@rbxts/signal";
 import Ball from "./Ball";
-
-const components = Dependency<Components>();
 
 export type OnGoalScoredCallback = (ball: Ball) => void;
 
@@ -17,6 +14,10 @@ type GoalAttributes = {
 })
 export default class Goal extends BaseComponent<GoalAttributes, Model> {
     public readonly onGoalScored = new Signal<OnGoalScoredCallback>();
+
+    constructor(private readonly components: Components) {
+        super();
+    }
 
     public initialize(ballDiameter: number) {
         this.maid.DoCleaning();
@@ -35,7 +36,7 @@ export default class Goal extends BaseComponent<GoalAttributes, Model> {
     }
 
     private onTouch(part: BasePart) {
-        const ballComponent = components.getComponent<Ball>(part);
+        const ballComponent = this.components.getComponent<Ball>(part);
         if (ballComponent === undefined) {
             return;
         }
