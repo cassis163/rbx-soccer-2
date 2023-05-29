@@ -1,5 +1,5 @@
 import { BaseComponent, Component } from "@flamework/components";
-import { OnInit, OnPhysics } from "@flamework/core";
+import { OnPhysics, OnStart } from "@flamework/core";
 
 const STUDS_PER_METER = 35 / 9.8;
 
@@ -20,11 +20,11 @@ type BallAttributes = {
         magnusMultiplier: 1,
     },
 })
-export default class Ball extends BaseComponent<BallAttributes, BasePart> implements OnInit, OnPhysics {
+export default class Ball extends BaseComponent<BallAttributes, BasePart> implements OnStart, OnPhysics {
     private readonly dragForce = new Instance("VectorForce");
     private readonly magnusForce = new Instance("VectorForce");
 
-    onInit() {
+    onStart() {
         const attachment = new Instance("Attachment");
         attachment.Parent = this.instance;
 
@@ -47,7 +47,8 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
         const velocity = this.instance.AssemblyLinearVelocity.Magnitude;
         const magnusCoefficient = this.getMagnusCoefficient();
         const surfaceArea = this.getSurfaceArea();
-        const magnitude = 0.5 * magnusCoefficient * AIR_DENSITY * velocity ** 2 * surfaceArea;
+        const airDensity = AIR_DENSITY / STUDS_PER_METER ** 3; // TO STUDS!!!
+        const magnitude = 0.5 * magnusCoefficient * airDensity * velocity ** 2 * surfaceArea;
 
         const linearVelocity = this.instance.AssemblyLinearVelocity;
         const angularVelocity = this.instance.AssemblyAngularVelocity;
@@ -77,7 +78,8 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
         const dragCoefficient = this.getDragCoefficient(reynoldsNumber);
         const surfaceArea = this.getSurfaceArea();
         const velocity = this.instance.AssemblyLinearVelocity.Magnitude;
-        const magnitude = 0.5 * AIR_DENSITY * velocity ** 2 * surfaceArea * dragCoefficient;
+        const airDensity = AIR_DENSITY / STUDS_PER_METER ** 3; // TO STUDS!!!
+        const magnitude = 0.5 * airDensity * velocity ** 2 * surfaceArea * dragCoefficient;
         const negativeVelocity = this.instance.AssemblyLinearVelocity.mul(-1);
 
         if (negativeVelocity.Magnitude === 0) return Vector3.zero;
@@ -101,7 +103,7 @@ export default class Ball extends BaseComponent<BallAttributes, BasePart> implem
         const characteristicLength = this.getBallDiameter() / STUDS_PER_METER;
         const velocity = this.instance.AssemblyLinearVelocity.Magnitude / STUDS_PER_METER;
 
-        return ((AIR_DENSITY / STUDS_PER_METER ** 3) * velocity * characteristicLength) / VISCOSITY / STUDS_PER_METER;
+        return (AIR_DENSITY * velocity * characteristicLength) / VISCOSITY;
     }
 
     private getSurfaceArea() {
